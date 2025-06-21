@@ -134,6 +134,10 @@
                         <h2 class="text-2xl font-bold mb-4 text-slate-700">บันทึกผลการแข่งขัน</h2>
                         <p class="text-slate-500 text-sm mb-4">เลือกทีมและใส่ผลการแข่งขันเพื่ออัปเดตตารางคะแนน</p>
                         <form id="match-form" class="space-y-4">
+                            <div>
+                                <label for="match-date" class="block text-sm font-medium text-slate-700 mb-1">วันที่แข่งขัน</label>
+                                <input type="date" id="match-date" name="match-date" class="w-full p-2 border border-slate-300 rounded-lg bg-slate-50 focus:ring-2 focus:ring-teal-500 focus:border-teal-500 transition" required>
+                            </div>
                             <div class="flex items-center space-x-2">
                                 <select id="home-team" name="home-team" class="w-full p-2 border border-slate-300 rounded-lg bg-slate-50 focus:ring-2 focus:ring-teal-500 focus:border-teal-500 transition" required></select>
                                 <input type="number" id="home-score" name="home-score" min="0" placeholder="สกอร์" class="w-20 p-2 text-center border border-slate-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500 transition" required>
@@ -212,7 +216,6 @@
     // Global variables provided by Canvas environment
     const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
     const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : {};
-    // FIX: Corrected typo from initialAuthToken to __initial_auth_token
     const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
 
     let app;
@@ -303,10 +306,10 @@
             { id: '4', name: 'ทีม D' }
         ];
         matches = [
-            { id: 'm1', homeTeamId: '1', awayTeamId: '2', homeScore: 3, awayScore: 1 },
-            { id: 'm2', homeTeamId: '3', awayTeamId: '4', homeScore: 0, awayScore: 0 },
-            { id: 'm3', homeTeamId: '1', awayTeamId: '3', homeScore: 2, awayScore: 2 },
-            { id: 'm4', homeTeamId: '2', awayTeamId: '4', homeScore: 1, awayScore: 2 },
+            { id: 'm1', date: '2025-06-20', homeTeamId: '1', awayTeamId: '2', homeScore: 3, awayScore: 1 },
+            { id: 'm2', date: '2025-06-20', homeTeamId: '3', awayTeamId: '4', homeScore: 0, awayScore: 0 },
+            { id: 'm3', date: '2025-06-21', homeTeamId: '1', awayTeamId: '3', homeScore: 2, awayScore: 2 },
+            { id: 'm4', date: '2025-06-21', homeTeamId: '2', awayTeamId: '4', homeScore: 1, awayScore: 2 },
         ];
     }
 
@@ -499,9 +502,10 @@
             const matchEl = document.createElement('div');
             matchEl.className = 'bg-slate-50 p-3 rounded-lg border border-slate-200';
             matchEl.innerHTML = `
-                <div class="flex justify-between items-center text-slate-700 font-semibold mb-2">
+                <div class="flex justify-between items-center text-slate-700 font-semibold mb-1">
                     <span>${homeTeamName} ${match.homeScore} - ${match.awayScore} ${awayTeamName}</span>
                 </div>
+                <div class="text-xs text-slate-500 mb-2">วันที่: ${match.date}</div>
                 <div class="flex justify-end space-x-2">
                     <button data-id="${match.id}" class="edit-match-btn bg-yellow-500 text-white text-xs font-bold py-1 px-3 rounded hover:bg-yellow-600 transition-colors">แก้ไข</button>
                     <button data-id="${match.id}" class="delete-match-btn bg-red-500 text-white text-xs font-bold py-1 px-3 rounded hover:bg-red-600 transition-colors">ลบ</button>
@@ -634,6 +638,7 @@
     const matchForm = document.getElementById('match-form');
     const submitMatchBtn = document.getElementById('submit-match-btn');
     const cancelEditBtn = document.getElementById('cancel-edit-btn');
+    const matchDateInput = document.getElementById('match-date'); // New: date input
     const homeTeamSelect = document.getElementById('home-team');
     const awayTeamSelect = document.getElementById('away-team');
     const homeScoreInput = document.getElementById('home-score');
@@ -668,11 +673,16 @@
     
     matchForm.addEventListener('submit', async (e) => {
         e.preventDefault();
+        const matchDate = matchDateInput.value; // New: get date value
         const homeId = homeTeamSelect.value;
         const awayId = awayTeamSelect.value;
         const homeScore = parseInt(homeScoreInput.value);
         const awayScore = parseInt(awayScoreInput.value);
 
+        if (!matchDate) { // New: Validate date
+            showModal('กรุณากรอกวันที่แข่งขัน');
+            return;
+        }
         if (!homeId || !awayId) {
             showModal('กรุณาเลือกทั้งทีมเหย้าและทีมเยือน');
             return;
@@ -689,6 +699,7 @@
         }
         
         const matchData = {
+            date: matchDate, // New: Add date to matchData
             homeTeamId: homeId,
             awayTeamId: awayId,
             homeScore: homeScore,
@@ -728,6 +739,8 @@
         cancelEditBtn.classList.add('hidden');
         homeTeamSelect.disabled = false;
         awayTeamSelect.disabled = false;
+        matchDateInput.disabled = false; // New: Enable date input
+        
         mainRender();
     });
 
@@ -738,6 +751,7 @@
         cancelEditBtn.classList.add('hidden');
         homeTeamSelect.disabled = false;
         awayTeamSelect.disabled = false;
+        matchDateInput.disabled = false; // New: Enable date input
     });
 
     async function handleDeleteTeam(teamId) {
@@ -766,6 +780,7 @@
         const matchToEdit = matches.find(m => m.id === matchId);
         if (matchToEdit) {
             editingMatchId = matchId;
+            matchDateInput.value = matchToEdit.date; // New: Populate date
             homeTeamSelect.value = matchToEdit.homeTeamId;
             awayTeamSelect.value = matchToEdit.awayTeamId;
             homeScoreInput.value = matchToEdit.homeScore;
@@ -776,6 +791,7 @@
             
             homeTeamSelect.disabled = true;
             awayTeamSelect.disabled = true;
+            matchDateInput.disabled = true; // New: Disable date during edit for simplicity
 
             document.getElementById('match-form-section').scrollIntoView({ behavior: 'smooth' });
         }
@@ -793,7 +809,7 @@
         } else {
             matches = matches.filter(m => m.id !== matchId);
             mainRender();
-            showModal('ลบผลการแข่งขัน (Local) เรียบร้อย!');
+            showModal('ลบผลการแข่งขัน (Local) เรียบรly!');
         }
 
         if (editingMatchId === matchId) { 
@@ -803,6 +819,7 @@
             cancelEditBtn.classList.add('hidden');
             homeTeamSelect.disabled = false;
             awayTeamSelect.disabled = false;
+            matchDateInput.disabled = false; // New: Enable date input
         }
     }
     

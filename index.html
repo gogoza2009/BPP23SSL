@@ -185,8 +185,9 @@
                     <!-- Team Management -->
                     <section class="bg-white p-4 sm:p-6 rounded-2xl shadow-lg">
                         <h2 class="text-2xl font-bold mb-4 text-slate-700">จัดการทีม</h2>
-                        <form id="team-form" class="flex space-x-2 mb-4">
+                        <form id="team-form" class="flex flex-col space-y-2 mb-4">
                             <input type="text" id="team-name" placeholder="เพิ่มชื่อทีมใหม่" class="w-full p-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500 transition">
+                            <input type="url" id="team-logo-url" placeholder="URL รูปภาพทีม (ไม่บังคับ)" class="w-full p-2 border border-slate-300 rounded-lg bg-slate-50 focus:ring-2 focus:ring-teal-500 focus:border-teal-500 transition">
                             <button type="submit" class="bg-blue-600 text-white font-bold py-2 px-4 rounded-lg hover:bg-blue-700 transition-colors shadow-md">เพิ่ม</button>
                         </form>
                         <div id="team-list" class="space-y-2 max-h-48 overflow-y-auto pr-2">
@@ -300,10 +301,10 @@
     // --- LOCAL DATA INITIALIZATION (Fallback if no Firebase) ---
     function initLocalData() {
         teams = [
-            { id: '1', name: 'ทีม A' },
-            { id: '2', name: 'ทีม B' },
-            { id: '3', name: 'ทีม C' },
-            { id: '4', name: 'ทีม D' }
+            { id: '1', name: 'ทีม A', logoUrl: 'https://placehold.co/24x24/10b981/ffffff?text=A' },
+            { id: '2', name: 'ทีม B', logoUrl: 'https://placehold.co/24x24/ef4444/ffffff?text=B' },
+            { id: '3', name: 'ทีม C', logoUrl: 'https://placehold.co/24x24/3b82f6/ffffff?text=C' },
+            { id: '4', name: 'ทีม D', logoUrl: 'https://placehold.co/24x24/eab308/ffffff?text=D' }
         ];
         matches = [
             { id: 'm1', date: '2025-06-20', homeTeamId: '1', awayTeamId: '2', homeScore: 3, awayScore: 1 },
@@ -319,6 +320,7 @@
         let stats = teams.map(team => ({
             id: team.id,
             name: team.name,
+            logoUrl: team.logoUrl, // Include logoUrl in stats
             played: 0,
             win: 0,
             draw: 0,
@@ -405,10 +407,17 @@
                 <tbody>
         `;
         tableData.forEach((stat, index) => {
+            const team = teams.find(t => t.id === stat.id); // Get full team object to access logoUrl
+            const logoHtml = team && team.logoUrl ? 
+                `<img src="${team.logoUrl}" alt="${team.name} logo" class="w-6 h-6 rounded-full inline-block mr-2 object-cover" onerror="this.onerror=null;this.src='https://placehold.co/24x24/cccccc/ffffff?text=?';">` : 
+                ''; // Placeholder if no logo or error
+
             tableHtml += `
                 <tr class="bg-white border-b hover:bg-teal-50 cursor-pointer" data-team-id="${stat.id}" data-team-name="${stat.name}">
                     <td class="px-2 sm:px-4 py-4 font-bold text-slate-900 text-center">${index + 1}</td>
-                    <th scope="row" class="px-2 sm:px-6 py-4 font-bold text-slate-900 whitespace-nowrap">${stat.name}</th>
+                    <th scope="row" class="px-2 sm:px-6 py-4 font-bold text-slate-900 whitespace-nowrap flex items-center">
+                        ${logoHtml} ${stat.name}
+                    </th>
                     <td class="px-2 py-4 text-center">${stat.played}</td>
                     <td class="px-2 py-4 text-center">${stat.win}</td>
                     <td class="px-2 py-4 text-center">${stat.draw}</td>
@@ -452,8 +461,14 @@
         teams.forEach(team => {
             const teamEl = document.createElement('div');
             teamEl.className = 'flex justify-between items-center bg-slate-100 p-2 rounded-lg';
+            const teamLogoHtml = team.logoUrl ? 
+                `<img src="${team.logoUrl}" alt="${team.name} logo" class="w-6 h-6 rounded-full object-cover mr-2" onerror="this.onerror=null;this.src='https://placehold.co/24x24/cccccc/ffffff?text=?';">` : 
+                '';
             teamEl.innerHTML = `
-                <span class="text-slate-700">${team.name}</span>
+                <div class="flex items-center space-x-2">
+                    ${teamLogoHtml}
+                    <span class="text-slate-700">${team.name}</span>
+                </div>
                 <button data-id="${team.id}" class="delete-team-btn text-red-500 hover:text-red-700 font-bold text-xl">&times;</button>
             `;
             teamListContainer.appendChild(teamEl);
@@ -643,24 +658,29 @@
     const awayTeamSelect = document.getElementById('away-team');
     const homeScoreInput = document.getElementById('home-score');
     const awayScoreInput = document.getElementById('away-score');
+    const teamNameInput = document.getElementById('team-name'); // Global for easier access
+    const teamLogoUrlInput = document.getElementById('team-logo-url'); // New: Logo URL input
 
     document.getElementById('team-form').addEventListener('submit', async (e) => {
         e.preventDefault();
-        const teamNameInput = document.getElementById('team-name');
         const name = teamNameInput.value.trim();
+        const logoUrl = teamLogoUrlInput.value.trim(); // Get logo URL
+
         if (name && !teams.find(t => t.name.toLowerCase() === name.toLowerCase())) {
             if (db) {
                 try {
-                    await addDoc(collection(db, TEAMS_COLLECTION), { name: name });
+                    await addDoc(collection(db, TEAMS_COLLECTION), { name: name, logoUrl: logoUrl }); // Save logoUrl
                     teamNameInput.value = '';
+                    teamLogoUrlInput.value = ''; // Clear logo URL input
                     showModal(`เพิ่มทีม "${name}" เรียบร้อย!`);
                 } catch (error) {
                     console.error("Error adding team:", error);
                     showModal("ข้อผิดพลาดในการเพิ่มทีม: " + error.message);
                 }
             } else {
-                teams.push({ id: `local-${Date.now()}`, name: name });
+                teams.push({ id: `local-${Date.now()}`, name: name, logoUrl: logoUrl }); // Add logoUrl to local data
                 teamNameInput.value = '';
+                teamLogoUrlInput.value = '';
                 mainRender();
                 showModal(`เพิ่มทีม "${name}" (Local) เรียบร้อย!`);
             }
